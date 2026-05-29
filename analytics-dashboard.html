@@ -366,6 +366,68 @@ tr.selected td { background: rgba(79,140,255,0.08); }
 .leaflet-popup-content-wrapper { background: var(--surface) !important; color: var(--text) !important; border-radius: 8px !important; }
 .leaflet-popup-tip { background: var(--surface) !important; }
 .leaflet-popup-content { margin: 10px 14px; font-size: 13px; }
+
+/* Measure tool */
+.toolbar-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+.tool-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-size: 12px;
+  padding: 5px 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.tool-btn:hover { color: var(--text); background: var(--surface2); }
+.tool-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.dist-total {
+  margin-left: auto;
+  font-size: 12px;
+  color: #fdcb6e;
+  font-weight: 500;
+  white-space: nowrap;
+  min-width: 100px;
+  text-align: right;
+}
+.measure-label {
+  background: rgba(26, 29, 39, 0.88);
+  color: #fdcb6e;
+  border: 1px solid #fdcb6e;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: center;
+  line-height: 1.5;
+}
+.measure-point-icon {
+  width: 14px;
+  height: 14px;
+  background: #fdcb6e;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  cursor: grab;
+}
+.measure-point-icon:hover {
+  width: 18px;
+  height: 18px;
+  margin: -2px 0 0 -2px;
+}
+.measure-point-icon-dragging {
+  cursor: grabbing;
+  width: 18px;
+  height: 18px;
+  margin: -2px 0 0 -2px;
+  background: #e17055;
+}
 </style>
 </head>
 <body>
@@ -431,6 +493,10 @@ tr.selected td { background: rgba(79,140,255,0.08); }
               <button data-mode="track" onclick="setMapMode('track')">Track</button>
               <button data-mode="both" onclick="setMapMode('both')">Both</button>
             </div>
+            <span class="toolbar-sep"></span>
+            <button id="measureBtn" onclick="toggleMeasure()" class="tool-btn">Measure</button>
+            <button id="clearMeasureBtn" onclick="clearMeasurements()" class="tool-btn" style="display:none">Clear</button>
+            <span id="totalDistDisplay" class="dist-total" style="display:none">Total: <span id="totalDistVal">0</span></span>
           </div>
           <div id="map"></div>
         </div>
@@ -564,6 +630,8 @@ let sortKey = null;
 let sortDir = 'asc';
 let mapMode = 'points';
 let mapInstance = null;
+let measuring = false;
+let measurePoints = [];
 
 function renderSidebar() {
   const el = document.getElementById('fileList');
@@ -767,6 +835,7 @@ function renderMap() {
 
   if (!hasCoords) {
     document.querySelector('#paneMap .empty-state')?.remove();
+    renderMeasurements();
     return;
   }
 
@@ -835,6 +904,8 @@ function renderMap() {
   if (coords.length > 0) {
     mapInstance.fitBounds(L.latLngBounds(coords), { padding: [30, 30] });
   }
+
+  renderMeasurements();
 }
 
 function openDetails(row) {
@@ -861,6 +932,101 @@ function openDetails(row) {
 
 function closeDetails() {
   document.getElementById('detailsPanel').classList.remove('open');
+}
+
+function formatDist(m) {
+  if (m >= 1000) return (m / 1000).toFixed(2) + ' km';
+  return m.toFixed(1) + ' m';
+}
+
+function toggleMeasure() {
+  measuring = !measuring;
+  document.getElementById('measureBtn').classList.toggle('active', measuring);
+  if (mapInstance) {
+    if (measuring) {
+      mapInstance.on('click', addMeasurePoint);
+      mapInstance.getContainer().style.cursor = 'crosshair';
+    } else {
+      mapInstance.off('click', addMeasurePoint);
+      mapInstance.getContainer().style.cursor = '';
+    }
+  }
+}
+
+function addMeasurePoint(e) {
+  measurePoints.push({ lat: e.latlng.lat, lng: e.latlng.lng });
+  document.getElementById('clearMeasureBtn').style.display = '';
+  renderMeasurements();
+}
+
+function clearMeasurements() {
+  measurePoints = [];
+  if (mapInstance) {
+    mapInstance.eachLayer(l => {
+      if (l._isMeasure) mapInstance.removeLayer(l);
+    });
+  }
+  document.getElementById('clearMeasureBtn').style.display = 'none';
+  document.getElementById('totalDistDisplay').style.display = 'none';
+}
+
+function renderMeasurements() {
+  if (!mapInstance) return;
+  mapInstance.eachLayer(l => {
+    if (l._isMeasure) mapInstance.removeLayer(l);
+  });
+  if (measurePoints.length === 0) return;
+
+  measurePoints.forEach((pt, i) => {
+    const m = L.marker([pt.lat, pt.lng], {
+      draggable: true,
+      icon: L.divIcon({
+        className: 'measure-point-icon',
+        iconSize: [14, 14],
+        iconAnchor: [7, 7]
+      })
+    });
+    m._isMeasure = true;
+    m._pointIndex = i;
+    m.addTo(mapInstance);
+    m.bindPopup('<b>Point ' + (i + 1) + '</b><br>' + pt.lat.toFixed(6) + ', ' + pt.lng.toFixed(6));
+    m.on('dragstart', function(e) {
+      e.target._icon.classList.add('measure-point-icon-dragging');
+    });
+    m.on('dragend', function(e) {
+      e.target._icon.classList.remove('measure-point-icon-dragging');
+      const pos = e.target.getLatLng();
+      const idx = e.target._pointIndex;
+      measurePoints[idx] = { lat: pos.lat, lng: pos.lng };
+      renderMeasurements();
+    });
+  });
+
+  let totalDist = 0;
+  for (let i = 0; i < measurePoints.length - 1; i++) {
+    const a = measurePoints[i];
+    const b = measurePoints[i + 1];
+    const segDist = L.latLng(a.lat, a.lng).distanceTo(L.latLng(b.lat, b.lng));
+    totalDist += segDist;
+
+    const line = L.polyline([[a.lat, a.lng], [b.lat, b.lng]], {
+      color: '#fdcb6e', weight: 2, dashArray: '6, 8', opacity: 0.9
+    });
+    line._isMeasure = true;
+    line.addTo(mapInstance);
+
+    const midLat = (a.lat + b.lat) / 2;
+    const midLng = (a.lng + b.lng) / 2;
+    const label = L.marker([midLat, midLng], {
+      icon: L.divIcon({ className: 'measure-label', html: formatDist(segDist), iconSize: [80, 20], iconAnchor: [40, 10] }),
+      interactive: false
+    });
+    label._isMeasure = true;
+    label.addTo(mapInstance);
+  }
+
+  document.getElementById('totalDistVal').textContent = formatDist(totalDist);
+  document.getElementById('totalDistDisplay').style.display = '';
 }
 
 function switchTab(name) {
