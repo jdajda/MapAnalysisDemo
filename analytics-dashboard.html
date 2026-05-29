@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analytics Dashboard</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --sidebar-w: 280px;
+  --panel-w: 380px;
+  --header-h: 48px;
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --surface2: #232733;
+  --border: #2a2e3a;
+  --text: #e1e4eb;
+  --text2: #8b90a0;
+  --accent: #4f8cff;
+  --accent2: #6c5ce7;
+  --green: #00b894;
+  --orange: #fdcb6e;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+}
+.app { display: flex; height: 100vh; flex-direction: column; }
+
+/* Header */
+.header {
+  height: var(--header-h);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 16px;
+  flex-shrink: 0;
+}
+.header h1 { font-size: 15px; font-weight: 600; letter-spacing: 0.3px; }
+.header-badge {
+  font-size: 10px;
+  background: var(--accent2);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  opacity: 0.8;
+}
+.header-right { margin-left: auto; display: flex; gap: 12px; align-items: center; }
+.header-right span { font-size: 12px; color: var(--text2); }
+
+/* Body */
+.body { display: flex; flex: 1; overflow: hidden; }
+
+/* Left Sidebar */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.sidebar-header {
+  padding: 16px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.sidebar-header button {
+  background: var(--accent);
+  border: none;
+  color: #fff;
+  font-size: 11px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+.file-list { flex: 1; overflow-y: auto; padding: 8px; }
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-bottom: 4px;
+}
+.file-item:hover { background: var(--surface2); }
+.file-item.active { background: var(--surface2); border-left: 3px solid var(--accent); }
+.file-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.file-icon.xlsx { background: #1d6f42; color: #55efc4; }
+.file-icon.csv { background: #2d3436; color: #dfe6e9; }
+.file-info { flex: 1; min-width: 0; }
+.file-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-meta { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.file-check { color: var(--green); font-size: 12px; }
+
+/* Center */
+.center { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* Tabs */
+.tabs {
+  display: flex;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 16px;
+  flex-shrink: 0;
+}
+.tab {
+  padding: 12px 20px;
+  font-size: 13px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  color: var(--text2);
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-count {
+  font-size: 10px;
+  background: var(--surface2);
+  padding: 1px 7px;
+  border-radius: 8px;
+  color: var(--text2);
+}
+.tab.active .tab-count { background: rgba(79,140,255,0.15); color: var(--accent); }
+
+/* Content */
+.content { flex: 1; display: flex; overflow: hidden; position: relative; }
+.content-pane { flex: 1; display: none; overflow: auto; }
+.content-pane.active { display: flex; }
+
+/* Table view */
+.table-view { flex-direction: column; padding: 16px; }
+.table-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+  gap: 12px;
+}
+.table-controls h3 { font-size: 14px; font-weight: 500; flex-shrink: 0; }
+.table-controls span { font-size: 12px; color: var(--text2); flex-shrink: 0; }
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  max-width: 380px;
+  margin: 0 auto;
+}
+.filter-bar input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 12px 7px 32px;
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.filter-bar input:focus { border-color: var(--accent); }
+.filter-bar input::placeholder { color: var(--text2); }
+.filter-bar .search-icon {
+  position: absolute;
+  margin-left: 10px;
+  color: var(--text2);
+  font-size: 13px;
+  pointer-events: none;
+}
+.filter-bar .clear-btn {
+  background: none;
+  border: none;
+  color: var(--text2);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+  display: none;
+}
+.filter-bar .clear-btn.visible { display: block; }
+.filter-bar .clear-btn:hover { color: var(--text); }
+.filter-wrap { position: relative; display: flex; align-items: center; flex: 1; }
+.table-wrapper { flex: 1; overflow: auto; border: 1px solid var(--border); border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead { position: sticky; top: 0; z-index: 2; }
+th {
+  background: var(--surface2);
+  padding: 8px 14px;
+  text-align: left;
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text2);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  vertical-align: top;
+}
+th .th-label {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+th .th-label:hover { color: var(--text); }
+th .th-label .sort-arrow { font-size: 10px; opacity: 0.4; }
+th .th-label .sort-arrow.active { opacity: 1; color: var(--accent); }
+th .th-filter {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--text);
+  outline: none;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  box-sizing: border-box;
+  min-width: 60px;
+}
+th .th-filter::placeholder { color: var(--text2); font-size: 10px; }
+th .th-filter:focus { border-color: var(--accent); }
+td {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+tr:hover td { background: rgba(79,140,255,0.04); }
+tr.selected td { background: rgba(79,140,255,0.08); }
+.type-lat { color: var(--green); }
+.type-lng { color: var(--orange); }
+.type-name { font-weight: 500; }
+
+/* Map view */
+.map-view { flex-direction: column; }
+.map-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.map-toolbar label { font-size: 12px; color: var(--text2); }
+.toggle-group {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.toggle-group button {
+  background: var(--surface);
+  border: none;
+  color: var(--text2);
+  font-size: 12px;
+  padding: 5px 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+  border-right: 1px solid var(--border);
+}
+.toggle-group button:last-child { border-right: none; }
+.toggle-group button:hover { color: var(--text); background: var(--surface2); }
+.toggle-group button.active { background: var(--accent); color: #fff; }
+#map { flex: 1; }
+
+/* Details panel */
+.details-panel {
+  position: absolute;
+  top: 0;
+  right: calc(-1 * var(--panel-w));
+  width: var(--panel-w);
+  height: 100%;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -8px 0 24px rgba(0,0,0,0.3);
+}
+.details-panel.open { right: 0; }
+.panel-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+.panel-header h3 { font-size: 15px; font-weight: 600; }
+.panel-close {
+  background: none;
+  border: none;
+  color: var(--text2);
+  cursor: pointer;
+  font-size: 20px;
+  padding: 4px;
+  line-height: 1;
+}
+.panel-close:hover { color: var(--text); }
+.panel-body { flex: 1; overflow-y: auto; padding: 20px; }
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.detail-row .label { color: var(--text2); }
+.detail-row .value { font-weight: 500; text-align: right; }
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text2);
+  gap: 8px;
+}
+.empty-state .icon { font-size: 48px; opacity: 0.3; }
+.empty-state p { font-size: 14px; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text2); }
+
+/* Leaflet fix */
+.leaflet-popup-content-wrapper { background: var(--surface) !important; color: var(--text) !important; border-radius: 8px !important; }
+.leaflet-popup-tip { background: var(--surface) !important; }
+.leaflet-popup-content { margin: 10px 14px; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>&#9670; Analytics</h1>
+    <span class="header-badge">MOCKUP</span>
+    <div class="header-right">
+      <span id="recordCount">0 records</span>
+      <span style="width:1px;height:16px;background:var(--border)"></span>
+      <span>v1.0</span>
+    </div>
+  </div>
+
+  <div class="body">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <span>Imported Files</span>
+        <button onclick="importFile()">+ Import</button>
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFileImport(event)">
+      </div>
+      <div class="file-list" id="fileList"></div>
+    </div>
+
+    <!-- Center -->
+    <div class="center">
+      <div class="tabs">
+        <div class="tab active" data-tab="table" onclick="switchTab('table')">
+          &#9776; Table <span class="tab-count" id="tableCount">0</span>
+        </div>
+        <div class="tab" data-tab="map" onclick="switchTab('map')">
+          &#127758; Map <span class="tab-count" id="mapCount">0</span>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="content-pane table-view active" id="paneTable">
+          <div class="table-controls">
+            <h3 id="currentFileLabel">No file selected</h3>
+            <div class="filter-bar">
+              <div class="filter-wrap">
+                <span class="search-icon">&#128269;</span>
+                <input type="text" id="globalFilter" placeholder="Search all columns..." oninput="onFilterChange()">
+                <button class="clear-btn" id="clearFilter" onclick="clearGlobalFilter()">&times;</button>
+              </div>
+            </div>
+            <span id="rowInfo">0 rows</span>
+          </div>
+          <div class="table-wrapper">
+            <table id="dataTable">
+              <thead><tr id="tableHead"></tr></thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="content-pane map-view" id="paneMap">
+          <div class="map-toolbar">
+            <label>Map mode:</label>
+            <div class="toggle-group">
+              <button class="active" data-mode="points" onclick="setMapMode('points')">Points</button>
+              <button data-mode="track" onclick="setMapMode('track')">Track</button>
+              <button data-mode="both" onclick="setMapMode('both')">Both</button>
+            </div>
+          </div>
+          <div id="map"></div>
+        </div>
+
+        <!-- Details Panel -->
+        <div class="details-panel" id="detailsPanel">
+          <div class="panel-header">
+            <h3 id="detailTitle">Details</h3>
+            <button class="panel-close" onclick="closeDetails()">&times;</button>
+          </div>
+          <div class="panel-body" id="detailBody"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Sample data
+let FILES = [
+  {
+    id: 'f1',
+    name: 'sales_regions_2025.xlsx',
+    type: 'xlsx',
+    size: '2.4 MB',
+    rows: 47,
+    cols: 8,
+    active: true,
+    data: generateSalesData()
+  },
+  {
+    id: 'f2',
+    name: 'store_locations.csv',
+    type: 'csv',
+    size: '184 KB',
+    rows: 23,
+    cols: 6,
+    active: false,
+    data: generateStoreData()
+  },
+  {
+    id: 'f3',
+    name: 'customer_survey.xlsx',
+    type: 'xlsx',
+    size: '1.1 MB',
+    rows: 156,
+    cols: 12,
+    active: false,
+    data: generateSurveyData()
+  }
+];
+
+function generateSalesData() {
+  const cities = [
+    { name: 'New York', lat: 40.7128, lng: -74.006, region: 'Northeast' },
+    { name: 'Los Angeles', lat: 34.0522, lng: -118.2437, region: 'West' },
+    { name: 'Chicago', lat: 41.8781, lng: -87.6298, region: 'Midwest' },
+    { name: 'Houston', lat: 29.7604, lng: -95.3698, region: 'South' },
+    { name: 'Phoenix', lat: 33.4484, lng: -112.074, region: 'West' },
+    { name: 'Philadelphia', lat: 39.9526, lng: -75.1652, region: 'Northeast' },
+    { name: 'San Antonio', lat: 29.4241, lng: -98.4936, region: 'South' },
+    { name: 'San Diego', lat: 32.7157, lng: -117.1611, region: 'West' },
+    { name: 'Dallas', lat: 32.7767, lng: -96.797, region: 'South' },
+    { name: 'Miami', lat: 25.7617, lng: -80.1918, region: 'South' },
+    { name: 'Seattle', lat: 47.6062, lng: -122.3321, region: 'West' },
+    { name: 'Boston', lat: 42.3601, lng: -71.0589, region: 'Northeast' },
+    { name: 'Denver', lat: 39.7392, lng: -104.9903, region: 'West' },
+    { name: 'Atlanta', lat: 33.749, lng: -84.388, region: 'South' },
+    { name: 'Portland', lat: 45.5152, lng: -122.6784, region: 'West' },
+  ];
+  return cities.map((c, i) => ({
+    id: i + 1,
+    city: c.name,
+    latitude: c.lat,
+    longitude: c.lng,
+    region: c.region,
+    revenue: +(Math.random() * 500 + 50).toFixed(2),
+    units: Math.floor(Math.random() * 2000 + 100),
+    growth: +(Math.random() * 40 - 5).toFixed(1)
+  }));
+}
+
+function generateStoreData() {
+  const stores = [
+    { name: 'Downtown Flagship', lat: 40.7580, lng: -73.9855, type: 'Flagship' },
+    { name: 'Brooklyn Heights', lat: 40.6888, lng: -73.9947, type: 'Standard' },
+    { name: 'Williamsburg', lat: 40.7081, lng: -73.9571, type: 'Standard' },
+    { name: 'Astoria', lat: 40.7644, lng: -73.9235, type: 'Standard' },
+    { name: 'Harlem', lat: 40.8116, lng: -73.9465, type: 'Standard' },
+    { name: 'Financial District', lat: 40.7074, lng: -74.0113, type: 'Flagship' },
+    { name: 'Upper East Side', lat: 40.7736, lng: -73.9566, type: 'Standard' },
+    { name: 'Chelsea', lat: 40.7465, lng: -74.0014, type: 'Standard' },
+    { name: 'SoHo', lat: 40.7233, lng: -74.0030, type: 'Flagship' },
+    { name: 'Midtown West', lat: 40.7589, lng: -73.9851, type: 'Standard' },
+    { name: 'Park Slope', lat: 40.6710, lng: -73.9827, type: 'Standard' },
+    { name: 'Long Island City', lat: 40.7442, lng: -73.9490, type: 'Express' },
+  ];
+  return stores.map((s, i) => ({
+    id: i + 1,
+    store: s.name,
+    latitude: s.lat,
+    longitude: s.lng,
+    type: s.type,
+    sqft: [2500, 5000, 12000, 8000, 3000][i % 5],
+    employees: Math.floor(Math.random() * 30 + 5)
+  }));
+}
+
+function generateSurveyData() {
+  const regions = ['North', 'South', 'East', 'West', 'Central'];
+  const data = [];
+  for (let i = 0; i < 20; i++) {
+    const lat = 25 + Math.random() * 23;
+    const lng = -125 + Math.random() * 60;
+    data.push({
+      id: i + 1,
+      respondent: `R-${String(i + 1).padStart(4, '0')}`,
+      latitude: +lat.toFixed(4),
+      longitude: +lng.toFixed(4),
+      region: regions[i % regions.length],
+      satisfaction: Math.floor(Math.random() * 5 + 1),
+      age: Math.floor(Math.random() * 60 + 18)
+    });
+  }
+  return data;
+}
+
+let currentFileId = 'f1';
+let fileIdCounter = 4;
+let sortKey = null;
+let sortDir = 'asc';
+let mapMode = 'points';
+let mapInstance = null;
+
+function renderSidebar() {
+  const el = document.getElementById('fileList');
+  el.innerHTML = FILES.map(f => `
+    <div class="file-item ${f.active ? 'active' : ''}" onclick="selectFile('${f.id}')">
+      <div class="file-icon ${f.type}">${f.type === 'xlsx' ? '&#9670;' : '&#8595;'}</div>
+      <div class="file-info">
+        <div class="file-name">${f.name}</div>
+        <div class="file-meta">${f.size} &middot; ${f.rows} rows</div>
+      </div>
+      <span class="file-check">${f.active ? '&#10003;' : ''}</span>
+    </div>
+  `).join('');
+}
+
+function selectFile(id) {
+  FILES.forEach(f => f.active = f.id === id);
+  currentFileId = id;
+  sortKey = null;
+  sortDir = 'asc';
+  renderSidebar();
+  renderTable();
+  renderMap();
+  updateCounts();
+}
+
+function getCurrentFile() {
+  return FILES.find(f => f.id === currentFileId);
+}
+
+function getLatLngColumns(data) {
+  const keys = Object.keys(data[0] || {});
+  const latKey = keys.find(k => /lat/i.test(k));
+  const lngKey = keys.find(k => /lng|lon/i.test(k));
+  return { latKey, lngKey };
+}
+
+function sortData(arr) {
+  if (!sortKey) return arr;
+  return [...arr].sort((a, b) => {
+    const va = a[sortKey];
+    const vb = b[sortKey];
+    const na = parseFloat(va);
+    const nb = parseFloat(vb);
+    const cmp = !isNaN(na) && !isNaN(nb) ? na - nb : String(va).localeCompare(String(vb), undefined, { numeric: true });
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
+}
+
+function sortBy(key) {
+  if (sortKey === key) {
+    sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    sortKey = key;
+    sortDir = 'asc';
+  }
+  renderTable();
+  renderMap();
+}
+
+function getFilteredData() {
+  const file = getCurrentFile();
+  if (!file) return [];
+  const globalQ = (document.getElementById('globalFilter').value || '').toLowerCase().trim();
+
+  const keys = Object.keys(file.data[0] || {});
+  const colFilters = {};
+  keys.forEach(k => {
+    const el = document.getElementById(`cf_${k}`);
+    if (el) {
+      const v = el.value.toLowerCase().trim();
+      if (v) colFilters[k] = v;
+    }
+  });
+
+  return file.data.filter((row, idx) => {
+    if (globalQ) {
+      const match = keys.some(k => String(row[k]).toLowerCase().includes(globalQ));
+      if (!match) return false;
+    }
+    for (const [k, q] of Object.entries(colFilters)) {
+      if (!String(row[k]).toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function renderTableHead() {
+  const file = getCurrentFile();
+  if (!file) return;
+  const keys = Object.keys(file.data[0] || {});
+  const thead = document.getElementById('tableHead');
+  thead.innerHTML = keys.map(k => {
+    const safe = k.replace(/'/g, "\\'");
+    const arrow = sortKey === k
+      ? (sortDir === 'asc' ? '<span class="sort-arrow active">&#9650;</span>' : '<span class="sort-arrow active">&#9660;</span>')
+      : '<span class="sort-arrow">&#9650;&#9660;</span>';
+    return `<th><div class="th-label" onclick="sortBy('${safe}')">${k} ${arrow}</div><input class="th-filter" id="cf_${k}" placeholder="filter" oninput="onFilterChange()"></th>`;
+  }).join('');
+}
+
+function renderTableBody() {
+  const file = getCurrentFile();
+  if (!file) return;
+  const data = file.data;
+  const keys = Object.keys(data[0] || {});
+  const { latKey, lngKey } = getLatLngColumns(data);
+  let filtered = getFilteredData();
+  const globalQ = document.getElementById('globalFilter');
+
+  // Sort
+  if (sortKey) {
+    filtered = sortData(filtered);
+  }
+
+  document.getElementById('currentFileLabel').textContent = file.name;
+  document.getElementById('rowInfo').textContent = `${filtered.length} / ${data.length} rows`;
+  document.getElementById('clearFilter').classList.toggle('visible', globalQ.value.length > 0);
+
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = filtered.map((row, idx) => {
+    const cls = idx === 0 ? 'class="selected"' : '';
+    return `<tr ${cls} onclick="selectTableRow(${idx})">${keys.map(k => {
+      let extra = '';
+      if (k === latKey) extra = ' class="type-lat"';
+      else if (k === lngKey) extra = ' class="type-lng"';
+      else if (k === 'city' || k === 'store' || k === 'name') extra = ' class="type-name"';
+      return `<td${extra}>${row[k]}</td>`;
+    }).join('')}</tr>`;
+  }).join('');
+}
+
+function renderTable() {
+  renderTableHead();
+  renderTableBody();
+}
+
+function onFilterChange() {
+  renderTableBody();
+  renderMap();
+}
+
+function clearGlobalFilter() {
+  document.getElementById('globalFilter').value = '';
+  onFilterChange();
+}
+
+function selectTableRow(idx) {
+  const file = getCurrentFile();
+  if (!file) return;
+  const filtered = sortData(getFilteredData());
+  const row = filtered[idx];
+  if (!row) return;
+  document.querySelectorAll('#tableBody tr').forEach((tr, i) => tr.classList.toggle('selected', i === idx));
+  openDetails(row);
+  if (mapInstance) {
+    const { latKey, lngKey } = getLatLngColumns(file.data);
+    if (latKey && lngKey) {
+      const lat = row[latKey];
+      const lng = row[lngKey];
+      mapInstance.setView([lat, lng], 10);
+      mapInstance.eachLayer(l => {
+        if (l.getLatLng && l.getLatLng().lat === lat && l.getLatLng().lng === lng) {
+          l.openPopup();
+        }
+      });
+    }
+  }
+}
+
+function setMapMode(mode) {
+  mapMode = mode;
+  document.querySelectorAll('.toggle-group button').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === mode);
+  });
+  renderMap();
+}
+
+function renderMap() {
+  const file = getCurrentFile();
+  if (!file) return;
+  const data = sortData(getFilteredData());
+  const allData = file.data;
+  const { latKey, lngKey } = getLatLngColumns(allData);
+  const hasCoords = latKey && lngKey && data.every(r => r[latKey] != null && r[lngKey] != null);
+
+  if (!mapInstance) {
+    mapInstance = L.map('map', { zoomControl: false }).setView([39.8283, -98.5795], 4);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+    }).addTo(mapInstance);
+    L.control.zoom({ position: 'bottomright' }).addTo(mapInstance);
+  }
+
+  // Clear existing layers
+  mapInstance.eachLayer(l => {
+    if (l instanceof L.LayerGroup || l instanceof L.Polyline) {
+      mapInstance.removeLayer(l);
+    }
+  });
+
+  if (!hasCoords) {
+    document.querySelector('#paneMap .empty-state')?.remove();
+    return;
+  }
+
+  const displayKeys = Object.keys(data[0]).filter(k => k !== latKey && k !== lngKey);
+
+  // Build coordinate array
+  const coords = data.map(r => [r[latKey], r[lngKey]]);
+
+  // Draw track polyline
+  if (mapMode === 'track' || mapMode === 'both') {
+    const track = L.polyline(coords, {
+      color: '#4f8cff',
+      weight: 3,
+      opacity: 0.8,
+      smoothFactor: 1
+    }).addTo(mapInstance);
+
+    // Start marker
+    if (coords.length > 0) {
+      L.circleMarker(coords[0], {
+        radius: 8,
+        fillColor: '#00b894',
+        color: '#fff',
+        weight: 2,
+        fillOpacity: 1
+      }).addTo(mapInstance).bindPopup('<b>Start</b>');
+    }
+    // End marker
+    if (coords.length > 1) {
+      L.circleMarker(coords[coords.length - 1], {
+        radius: 8,
+        fillColor: '#e17055',
+        color: '#fff',
+        weight: 2,
+        fillOpacity: 1
+      }).addTo(mapInstance).bindPopup('<b>End</b>');
+    }
+  }
+
+  // Draw points
+  if (mapMode === 'points' || mapMode === 'both') {
+    const pointLayer = L.layerGroup().addTo(mapInstance);
+    data.forEach((row, idx) => {
+      const lat = row[latKey];
+      const lng = row[lngKey];
+      const color = idx === 0 ? '#00b894' : '#6c5ce7';
+      const marker = L.circleMarker([lat, lng], {
+        radius: 7,
+        fillColor: color,
+        color: '#fff',
+        weight: 1.5,
+        opacity: 0.9,
+        fillOpacity: 0.7
+      }).addTo(pointLayer);
+
+      const popupLines = displayKeys.map(k => `<b>${k}:</b> ${row[k]}`).join('<br>');
+      marker.bindPopup(`<div style="min-width:160px">${popupLines}</div>`);
+
+      marker.on('click', () => {
+        openDetails(row);
+        document.querySelectorAll('#tableBody tr').forEach((tr, i) => tr.classList.toggle('selected', i === idx));
+      });
+    });
+  }
+
+  if (coords.length > 0) {
+    mapInstance.fitBounds(L.latLngBounds(coords), { padding: [30, 30] });
+  }
+}
+
+function openDetails(row) {
+  const panel = document.getElementById('detailsPanel');
+  const title = document.getElementById('detailTitle');
+  const body = document.getElementById('detailBody');
+
+  const file = getCurrentFile();
+  const keys = Object.keys(row);
+
+  // Find a good title field
+  const nameKey = keys.find(k => /^(name|city|store|respondent)$/i.test(k));
+  title.textContent = nameKey ? row[nameKey] : `Record #${row.id || ''}`;
+
+  body.innerHTML = keys.map(k => `
+    <div class="detail-row">
+      <span class="label">${k}</span>
+      <span class="value">${row[k]}</span>
+    </div>
+  `).join('');
+
+  panel.classList.add('open');
+}
+
+function closeDetails() {
+  document.getElementById('detailsPanel').classList.remove('open');
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.content-pane').forEach(p => p.classList.toggle('active', p.id === `pane${name.charAt(0).toUpperCase() + name.slice(1)}`));
+  if (name === 'map' && mapInstance) mapInstance.invalidateSize();
+}
+
+function updateCounts() {
+  const file = getCurrentFile();
+  const n = file ? file.data.length : 0;
+  document.getElementById('tableCount').textContent = n;
+  document.getElementById('mapCount').textContent = n;
+  document.getElementById('recordCount').textContent = `${n} records`;
+}
+
+function importFile() {
+  document.getElementById('fileInput').click();
+}
+
+function handleFileImport(event) {
+  const input = event.target;
+  const file = input.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+      if (rows.length === 0) {
+        alert('The file contains no data.');
+        return;
+      }
+
+      const ext = file.name.split('.').pop().toLowerCase();
+      const type = ext === 'csv' ? 'csv' : 'xlsx';
+      const size = (file.size / 1024).toFixed(file.size > 1024 * 1024 ? 2 : 0) + (file.size > 1024 * 1024 ? ' MB' : ' KB');
+      if (file.size > 1024 * 1024) {
+        // Already handled above
+      }
+      const sizeStr = file.size >= 1024 * 1024
+        ? (file.size / (1024 * 1024)).toFixed(1) + ' MB'
+        : (file.size / 1024).toFixed(0) + ' KB';
+
+      const id = 'f' + fileIdCounter++;
+      const keys = Object.keys(rows[0]);
+
+      // Normalize lat/lng values to numbers
+      const latKey = keys.find(k => /lat/i.test(k));
+      const lngKey = keys.find(k => /lng|lon/i.test(k));
+      const cleanRows = rows.map(row => {
+        const r = { ...row };
+        if (latKey) r[latKey] = parseFloat(r[latKey]) || r[latKey];
+        if (lngKey) r[lngKey] = parseFloat(r[lngKey]) || r[lngKey];
+        return r;
+      });
+
+      FILES.forEach(f => f.active = false);
+      FILES.push({
+        id,
+        name: file.name,
+        type,
+        size: sizeStr,
+        rows: cleanRows.length,
+        cols: keys.length,
+        active: true,
+        data: cleanRows
+      });
+
+      currentFileId = id;
+      sortKey = null;
+      sortDir = 'asc';
+      renderSidebar();
+      renderTable();
+      renderMap();
+      updateCounts();
+    } catch (err) {
+      alert('Failed to parse file: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  input.value = '';
+}
+
+// Init
+renderSidebar();
+renderTable();
+renderMap();
+updateCounts();
+</script>
+</body>
+</html>
