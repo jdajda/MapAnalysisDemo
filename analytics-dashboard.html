@@ -428,6 +428,132 @@ tr.selected td { background: rgba(79,140,255,0.08); }
   margin: -2px 0 0 -2px;
   background: #e17055;
 }
+
+/* Import dialog */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 680px;
+  max-width: 92vw;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.modal-header h3 { font-size: 15px; font-weight: 600; }
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-size: 22px;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+}
+.modal-close:hover { color: var(--text); }
+.modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.import-config {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.import-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.import-field.full { grid-column: 1 / -1; }
+.import-field label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text2);
+  font-weight: 500;
+}
+.import-field select {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+  cursor: pointer;
+}
+.import-field select:focus { border-color: var(--accent); }
+.import-btn {
+  background: var(--accent) !important;
+  color: #fff !important;
+  border-color: var(--accent) !important;
+}
+.import-preview label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text2);
+  font-weight: 500;
+  margin-bottom: 8px;
+  display: block;
+}
+.import-preview label span {
+  color: var(--text2);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-left: 8px;
+}
+.import-table-wrap {
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.import-table-wrap table { font-size: 12px; }
+.import-table-wrap th {
+  padding: 6px 10px;
+  font-size: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.import-table-wrap td {
+  padding: 5px 10px;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 </style>
 </head>
 <body>
@@ -514,6 +640,46 @@ tr.selected td { background: rgba(79,140,255,0.08); }
   </div>
 </div>
 
+<!-- Import Dialog -->
+<div class="modal-overlay" id="importDialog" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Import Data</h3>
+      <button class="modal-close" onclick="cancelImport()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="import-config">
+        <div class="import-field">
+          <label>Latitude column</label>
+          <select id="importLatCol"></select>
+        </div>
+        <div class="import-field">
+          <label>Longitude column</label>
+          <select id="importLngCol"></select>
+        </div>
+        <div class="import-field full">
+          <label>Coordinate format</label>
+          <select id="importFormat">
+            <option value="DD">Decimal Degrees (40.7128)</option>
+            <option value="DDM">Degrees Decimal Minutes (40° 42.768' N)</option>
+            <option value="DMS">Degrees Minutes Seconds (40° 42' 46" N)</option>
+          </select>
+        </div>
+      </div>
+      <div class="import-preview">
+        <label>Preview <span id="importRowCount"></span></label>
+        <div class="import-table-wrap">
+          <table id="importPreviewTable"></table>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="tool-btn" onclick="cancelImport()">Cancel</button>
+      <button class="tool-btn import-btn" onclick="confirmImport()">Import</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // Sample data
 let FILES = [
@@ -525,6 +691,9 @@ let FILES = [
     rows: 47,
     cols: 8,
     active: true,
+    latKey: 'latitude',
+    lngKey: 'longitude',
+    coordFormat: 'DD',
     data: generateSalesData()
   },
   {
@@ -535,6 +704,9 @@ let FILES = [
     rows: 23,
     cols: 6,
     active: false,
+    latKey: 'latitude',
+    lngKey: 'longitude',
+    coordFormat: 'DD',
     data: generateStoreData()
   },
   {
@@ -545,6 +717,9 @@ let FILES = [
     rows: 156,
     cols: 12,
     active: false,
+    latKey: 'latitude',
+    lngKey: 'longitude',
+    coordFormat: 'DD',
     data: generateSurveyData()
   }
 ];
@@ -632,6 +807,7 @@ let mapMode = 'points';
 let mapInstance = null;
 let measuring = false;
 let measurePoints = [];
+let pendingImport = null;
 
 function renderSidebar() {
   const el = document.getElementById('fileList');
@@ -662,10 +838,12 @@ function getCurrentFile() {
   return FILES.find(f => f.id === currentFileId);
 }
 
-function getLatLngColumns(data) {
-  const keys = Object.keys(data[0] || {});
-  const latKey = keys.find(k => /lat/i.test(k));
-  const lngKey = keys.find(k => /lng|lon/i.test(k));
+function getLatLngColumns(file) {
+  const keys = Object.keys(file.data[0] || {});
+  let latKey = file.latKey;
+  let lngKey = file.lngKey;
+  if (!latKey || !keys.includes(latKey)) latKey = keys.find(k => /lat/i.test(k));
+  if (!lngKey || !keys.includes(lngKey)) lngKey = keys.find(k => /lng|lon/i.test(k));
   return { latKey, lngKey };
 }
 
@@ -738,7 +916,7 @@ function renderTableBody() {
   if (!file) return;
   const data = file.data;
   const keys = Object.keys(data[0] || {});
-  const { latKey, lngKey } = getLatLngColumns(data);
+  const { latKey, lngKey } = getLatLngColumns(file);
   let filtered = getFilteredData();
   const globalQ = document.getElementById('globalFilter');
 
@@ -788,13 +966,16 @@ function selectTableRow(idx) {
   document.querySelectorAll('#tableBody tr').forEach((tr, i) => tr.classList.toggle('selected', i === idx));
   openDetails(row);
   if (mapInstance) {
-    const { latKey, lngKey } = getLatLngColumns(file.data);
+    const { latKey, lngKey } = getLatLngColumns(file);
     if (latKey && lngKey) {
-      const lat = row[latKey];
-      const lng = row[lngKey];
+      let lat = row[latKey], lng = row[lngKey];
+      if (file.coordFormat && file.coordFormat !== 'DD') {
+        lat = parseCoord(lat, file.coordFormat);
+        lng = parseCoord(lng, file.coordFormat);
+      }
       mapInstance.setView([lat, lng], 10);
       mapInstance.eachLayer(l => {
-        if (l.getLatLng && l.getLatLng().lat === lat && l.getLatLng().lng === lng) {
+        if (l.getLatLng && Number(l.getLatLng().lat).toFixed(4) === Number(lat).toFixed(4) && Number(l.getLatLng().lng).toFixed(4) === Number(lng).toFixed(4)) {
           l.openPopup();
         }
       });
@@ -815,8 +996,18 @@ function renderMap() {
   if (!file) return;
   const data = sortData(getFilteredData());
   const allData = file.data;
-  const { latKey, lngKey } = getLatLngColumns(allData);
-  const hasCoords = latKey && lngKey && data.every(r => r[latKey] != null && r[lngKey] != null);
+  const { latKey, lngKey } = getLatLngColumns(file);
+  const needParse = file.coordFormat && file.coordFormat !== 'DD';
+
+  const raw = data.map(r => {
+    let lat = r[latKey], lng = r[lngKey];
+    if (lat == null || lng == null) return null;
+    if (needParse) { lat = parseCoord(lat, file.coordFormat); lng = parseCoord(lng, file.coordFormat); }
+    lat = Number(lat); lng = Number(lng);
+    return (!isNaN(lat) && !isNaN(lng)) ? [lat, lng] : null;
+  });
+  const coords = raw.filter(Boolean);
+  const hasCoords = coords.length > 0;
 
   if (!mapInstance) {
     mapInstance = L.map('map', { zoomControl: false }).setView([39.8283, -98.5795], 4);
@@ -840,9 +1031,6 @@ function renderMap() {
   }
 
   const displayKeys = Object.keys(data[0]).filter(k => k !== latKey && k !== lngKey);
-
-  // Build coordinate array
-  const coords = data.map(r => [r[latKey], r[lngKey]]);
 
   // Draw track polyline
   if (mapMode === 'track' || mapMode === 'both') {
@@ -879,10 +1067,10 @@ function renderMap() {
   if (mapMode === 'points' || mapMode === 'both') {
     const pointLayer = L.layerGroup().addTo(mapInstance);
     data.forEach((row, idx) => {
-      const lat = row[latKey];
-      const lng = row[lngKey];
+      const pt = coords[idx];
+      if (!pt) return;
       const color = idx === 0 ? '#00b894' : '#6c5ce7';
-      const marker = L.circleMarker([lat, lng], {
+      const marker = L.circleMarker(pt, {
         radius: 7,
         fillColor: color,
         color: '#fff',
@@ -1032,7 +1220,10 @@ function renderMeasurements() {
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
   document.querySelectorAll('.content-pane').forEach(p => p.classList.toggle('active', p.id === `pane${name.charAt(0).toUpperCase() + name.slice(1)}`));
-  if (name === 'map' && mapInstance) mapInstance.invalidateSize();
+  if (name === 'map') {
+    if (mapInstance) mapInstance.invalidateSize();
+    renderMap();
+  }
 }
 
 function updateCounts() {
@@ -1056,7 +1247,10 @@ function handleFileImport(event) {
   reader.onload = function(e) {
     try {
       const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
+      const ext = file.name.split('.').pop().toLowerCase();
+      const workbook = ext === 'csv'
+        ? XLSX.read(new TextDecoder('utf-8').decode(data).replace(/^\uFEFF/, ''), { type: 'string' })
+        : XLSX.read(data, { type: 'array' });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
@@ -1066,54 +1260,156 @@ function handleFileImport(event) {
         return;
       }
 
-      const ext = file.name.split('.').pop().toLowerCase();
       const type = ext === 'csv' ? 'csv' : 'xlsx';
-      const size = (file.size / 1024).toFixed(file.size > 1024 * 1024 ? 2 : 0) + (file.size > 1024 * 1024 ? ' MB' : ' KB');
-      if (file.size > 1024 * 1024) {
-        // Already handled above
-      }
       const sizeStr = file.size >= 1024 * 1024
         ? (file.size / (1024 * 1024)).toFixed(1) + ' MB'
         : (file.size / 1024).toFixed(0) + ' KB';
 
-      const id = 'f' + fileIdCounter++;
-      const keys = Object.keys(rows[0]);
-
-      // Normalize lat/lng values to numbers
-      const latKey = keys.find(k => /lat/i.test(k));
-      const lngKey = keys.find(k => /lng|lon/i.test(k));
-      const cleanRows = rows.map(row => {
-        const r = { ...row };
-        if (latKey) r[latKey] = parseFloat(r[latKey]) || r[latKey];
-        if (lngKey) r[lngKey] = parseFloat(r[lngKey]) || r[lngKey];
-        return r;
-      });
-
-      FILES.forEach(f => f.active = false);
-      FILES.push({
-        id,
-        name: file.name,
-        type,
-        size: sizeStr,
-        rows: cleanRows.length,
-        cols: keys.length,
-        active: true,
-        data: cleanRows
-      });
-
-      currentFileId = id;
-      sortKey = null;
-      sortDir = 'asc';
-      renderSidebar();
-      renderTable();
-      renderMap();
-      updateCounts();
+      pendingImport = { rows, keys: Object.keys(rows[0]), name: file.name, type, size: sizeStr };
+      showImportDialog();
     } catch (err) {
       alert('Failed to parse file: ' + err.message);
     }
   };
   reader.readAsArrayBuffer(file);
   input.value = '';
+}
+
+function showImportDialog() {
+  if (!pendingImport) return;
+  const { keys, rows } = pendingImport;
+
+  const latSelect = document.getElementById('importLatCol');
+  const lngSelect = document.getElementById('importLngCol');
+  latSelect.innerHTML = keys.map(k => '<option value="' + k.replace(/"/g, '&quot;') + '">' + k + '</option>').join('');
+  lngSelect.innerHTML = keys.map(k => '<option value="' + k.replace(/"/g, '&quot;') + '">' + k + '</option>').join('');
+
+  const autoLatKey = keys.find(k => /lat/i.test(k)) || keys[0];
+  const autoLngKey = keys.find(k => /lng|lon/i.test(k)) || (keys.length > 1 ? keys[1] : keys[0]);
+  latSelect.value = autoLatKey;
+  lngSelect.value = autoLngKey;
+
+  function updateImportFormat() {
+    const latKey = document.getElementById('importLatCol').value;
+    const latValues = rows.map(r => r[latKey]).filter(v => v != null && v !== '');
+    document.getElementById('importFormat').value = detectCoordFormat(latValues);
+  }
+
+  const latValues = rows.map(r => r[autoLatKey]).filter(v => v != null && v !== '');
+  document.getElementById('importFormat').value = detectCoordFormat(latValues);
+  latSelect.onchange = updateImportFormat;
+  lngSelect.onchange = updateImportFormat;
+
+  renderImportPreview();
+  document.getElementById('importDialog').style.display = '';
+}
+
+function renderImportPreview() {
+  if (!pendingImport) return;
+  const { keys, rows } = pendingImport;
+  const previewRows = rows.slice(0, 5);
+
+  document.getElementById('importRowCount').textContent = rows.length + ' rows';
+
+  const thead = '<tr>' + keys.map(k => '<th>' + k + '</th>').join('') + '</tr>';
+  const tbody = previewRows.map(row =>
+    '<tr>' + keys.map(k => '<td>' + (row[k] != null ? row[k] : '') + '</td>').join('') + '</tr>'
+  ).join('');
+
+  document.getElementById('importPreviewTable').innerHTML = thead + tbody;
+}
+
+function confirmImport() {
+  if (!pendingImport) return;
+  const { rows, keys, name, type, size } = pendingImport;
+  const latKey = document.getElementById('importLatCol').value;
+  const lngKey = document.getElementById('importLngCol').value;
+  const format = document.getElementById('importFormat').value;
+
+  const cleanRows = rows.map(row => {
+    const r = { ...row };
+    const lat = parseCoord(r[latKey], format);
+    const lng = parseCoord(r[lngKey], format);
+    if (!isNaN(lat)) r[latKey] = lat;
+    if (!isNaN(lng)) r[lngKey] = lng;
+    return r;
+  });
+
+  const id = 'f' + fileIdCounter++;
+  FILES.forEach(f => f.active = false);
+  FILES.push({
+    id, name, type, size,
+    rows: cleanRows.length, cols: keys.length,
+    active: true, data: cleanRows,
+    latKey, lngKey, coordFormat: format
+  });
+
+  currentFileId = id;
+  sortKey = null;
+  sortDir = 'asc';
+  pendingImport = null;
+  document.getElementById('importDialog').style.display = 'none';
+  renderSidebar();
+  renderTable();
+  renderMap();
+  updateCounts();
+}
+
+function cancelImport() {
+  pendingImport = null;
+  document.getElementById('importDialog').style.display = 'none';
+}
+
+function detectCoordFormat(values) {
+  for (const v of values) {
+    if (v == null || v === '') continue;
+    const s = String(v).trim();
+    if (/°/.test(s)) {
+      if (/"/.test(s)) return 'DMS';
+      if (/'/.test(s)) return 'DDM';
+    }
+  }
+  return 'DD';
+}
+
+function parseCoord(value, format) {
+  if (value == null || value === '') return NaN;
+  const s = String(value).trim();
+
+  if (format === 'DD') {
+    return parseFloat(s);
+  }
+
+  if (format === 'DDM') {
+    let m = s.match(/^\s*(-?\d+(?:\.\d+)?)\xB0\s*([\d.]+)'(?:\s*([NSEW]))?\s*$/i);
+    if (!m) m = s.match(/^\s*([NSEW])\s*(-?\d+(?:\.\d+)?)\xB0\s*([\d.]+)'\s*$/i);
+    if (m) {
+      const deg = parseFloat(m[1] || m[2]);
+      const min = parseFloat(m[2] || m[3]);
+      const dir = (m[3] || m[1] || '').toUpperCase();
+      let result = Math.abs(deg) + min / 60;
+      if (dir === 'S' || dir === 'W' || deg < 0) result = -result;
+      return result;
+    }
+    return parseFloat(s);
+  }
+
+  if (format === 'DMS') {
+    let m = s.match(/^\s*(-?\d+(?:\.\d+)?)\xB0\s*(\d+)'\s*([\d.]+)"(?:\s*([NSEW]))?\s*$/i);
+    if (!m) m = s.match(/^\s*([NSEW])\s*(-?\d+(?:\.\d+)?)\xB0\s*(\d+)'\s*([\d.]+)"\s*$/i);
+    if (m) {
+      const deg = parseFloat(m[1] || m[2]);
+      const min = parseFloat(m[2] || m[3]);
+      const sec = parseFloat(m[3] || m[4]);
+      const dir = (m[4] || m[1] || '').toUpperCase();
+      let result = Math.abs(deg) + min / 60 + sec / 3600;
+      if (dir === 'S' || dir === 'W' || deg < 0) result = -result;
+      return result;
+    }
+    return parseFloat(s);
+  }
+
+  return parseFloat(s);
 }
 
 // Init

@@ -1,0 +1,16 @@
+﻿id,landmark,city,country,latitude,longitude,elevation_m,category
+1,Eiffel Tower,Paris,France,"48° 51' 30.24"" N","2° 17' 40.2"" E",330,Monument
+2,Statue of Liberty,New York,USA,"40° 41' 21.12"" N","74° 2' 40.2"" W",93,Monument
+3,Big Ben,London,UK,"51° 30' 2.52"" N","0° 7' 28.56"" W",96,Clock Tower
+4,Colosseum,Rome,Italy,"41° 53' 24.72"" N","12° 29' 31.92"" E",50,Ancient
+5,Taj Mahal,Agra,India,"27° 10' 30.36"" N","78° 2' 31.56"" E",55,Mausoleum
+6,Sydney Opera House,Sydney,Australia,"33° 51' 24.48"" S","151° 12' 55.08"" E",25,Venue
+7,Great Wall,Beijing,China,"40° 21' 1.08"" N","116° 0' 34.92"" E",1430,Ancient
+8,Machu Picchu,Cusco,Peru,"13° 9' 47.16"" S","72° 32' 42"" W",2430,Ancient
+9,Pyramids of Giza,Giza,Egypt,"29° 58' 45.12"" N","31° 8' 3.12"" E",138,Ancient
+10,Christ the Redeemer,Rio de Janeiro,Brazil,"22° 57' 6.84"" S","43° 12' 37.8"" W",710,Statue
+11,Tokyo Tower,Tokyo,Japan,"35° 39' 30.96"" N","139° 44' 43.44"" E",333,Tower
+12,Burj Khalifa,Dubai,UAE,"25° 11' 49.92"" N","55° 16' 27.84"" E",828,Skyscraper
+13,Leaning Tower of Pisa,Pisa,Italy,"43° 43' 22.8"" N","10° 23' 47.76"" E",56,Tower
+14,Stonehenge,Amesbury,UK,"51° 10' 44.04"" N","1° 49' 34.32"" W",110,Ancient
+15,Moscow Kremlin,Moscow,Russia,"55° 45' 6.12"" N","37° 37' 4.08"" E",50,Fortress
