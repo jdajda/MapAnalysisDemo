@@ -115,9 +115,36 @@ body {
 .file-icon.xlsx { background: #1d6f42; color: #55efc4; }
 .file-icon.csv { background: #2d3436; color: #dfe6e9; }
 .file-info { flex: 1; min-width: 0; }
-.file-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-name { font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 4px; }
+.file-name > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .file-meta { font-size: 11px; color: var(--text2); margin-top: 2px; }
 .file-check { color: var(--green); font-size: 12px; }
+.file-remove {
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.file-item:hover .file-remove { opacity: 1; }
+.file-remove:hover { color: #e74c3c; }
+.file-rename {
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.file-item:hover .file-rename { opacity: 1; }
+.file-rename:hover { color: var(--accent); }
 
 /* Center */
 .center { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
@@ -554,6 +581,30 @@ tr.selected td { background: rgba(79,140,255,0.08); }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.merge-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.merge-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  background: var(--surface2);
+  transition: background 0.15s;
+  font-size: 13px;
+}
+.merge-item:hover { background: var(--border); }
+.merge-item input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+.merge-item span { color: var(--text); }
 </style>
 </head>
 <body>
@@ -574,6 +625,7 @@ tr.selected td { background: rgba(79,140,255,0.08); }
       <div class="sidebar-header">
         <span>Imported Files</span>
         <button onclick="importFile()">+ Import</button>
+        <button onclick="showMergeDialog()" style="margin-left:4px">Merge</button>
         <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFileImport(event)">
       </div>
       <div class="file-list" id="fileList"></div>
@@ -641,6 +693,56 @@ tr.selected td { background: rgba(79,140,255,0.08); }
 </div>
 
 <!-- Import Dialog -->
+<div class="modal-overlay" id="mergeDialog" style="display:none">
+  <div class="modal" style="width:460px">
+    <div class="modal-header">
+      <h3>Merge Datasets</h3>
+      <button class="modal-close" onclick="cancelMerge()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="margin-bottom:14px;font-size:13px;color:var(--text2)">Select 2 or more datasets to merge into one:</p>
+      <div class="merge-list" id="mergeFileList"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="tool-btn" onclick="cancelMerge()">Cancel</button>
+      <button class="tool-btn import-btn" onclick="confirmMerge()">Merge</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="removeDialog" style="display:none">
+  <div class="modal" style="width:400px">
+    <div class="modal-header">
+      <h3>Remove Dataset</h3>
+      <button class="modal-close" onclick="cancelRemove()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p id="removeMessage" style="font-size:13px;color:var(--text1);line-height:1.5"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="tool-btn" onclick="cancelRemove()">Cancel</button>
+      <button class="tool-btn import-btn" onclick="confirmRemove()" style="background:#e74c3c">Remove</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="renameDialog" style="display:none">
+  <div class="modal" style="width:400px">
+    <div class="modal-header">
+      <h3>Rename Dataset</h3>
+      <button class="modal-close" onclick="cancelRename()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:6px">New name</label>
+      <input id="renameInput" type="text" style="width:100%;padding:8px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;outline:none" onkeydown="if(event.key==='Enter')confirmRename()">
+    </div>
+    <div class="modal-footer">
+      <button class="tool-btn" onclick="cancelRename()">Cancel</button>
+      <button class="tool-btn import-btn" onclick="confirmRename()">Rename</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="importDialog" style="display:none">
   <div class="modal">
     <div class="modal-header">
@@ -815,10 +917,14 @@ function renderSidebar() {
     <div class="file-item ${f.active ? 'active' : ''}" onclick="selectFile('${f.id}')">
       <div class="file-icon ${f.type}">${f.type === 'xlsx' ? '&#9670;' : '&#8595;'}</div>
       <div class="file-info">
-        <div class="file-name">${f.name}</div>
+        <div class="file-name">
+          <span>${f.name}</span>
+          <button class="file-rename" onclick="event.stopPropagation();showRenameDialog('${f.id}')" title="Rename dataset">&#9998;</button>
+        </div>
         <div class="file-meta">${f.size} &middot; ${f.rows} rows</div>
       </div>
       <span class="file-check">${f.active ? '&#10003;' : ''}</span>
+      <button class="file-remove" onclick="event.stopPropagation();showRemoveDialog('${f.id}')" title="Remove dataset">&times;</button>
     </div>
   `).join('');
 }
@@ -1358,6 +1464,146 @@ function confirmImport() {
 function cancelImport() {
   pendingImport = null;
   document.getElementById('importDialog').style.display = 'none';
+}
+
+function showMergeDialog() {
+  const container = document.getElementById('mergeFileList');
+  container.innerHTML = FILES.map(f => `
+    <label class="merge-item">
+      <input type="checkbox" value="${f.id}" ${f.active ? 'checked' : ''}>
+      <span>${f.name} (${f.rows} rows, ${f.cols} cols)</span>
+    </label>
+  `).join('');
+  document.getElementById('mergeDialog').style.display = '';
+}
+
+function cancelMerge() {
+  document.getElementById('mergeDialog').style.display = 'none';
+}
+
+function confirmMerge() {
+  const checked = document.querySelectorAll('#mergeFileList input:checked');
+  if (checked.length < 2) {
+    alert('Select at least 2 datasets to merge.');
+    return;
+  }
+
+  const selectedIds = Array.from(checked).map(cb => cb.value);
+  const selectedFiles = FILES.filter(f => selectedIds.includes(f.id));
+
+  const allKeys = new Set();
+  selectedFiles.forEach(f => (f.data || []).forEach(r => Object.keys(r).forEach(k => allKeys.add(k))));
+  const keys = Array.from(allKeys);
+
+  const first = selectedFiles[0];
+  let latKey = first.latKey;
+  let lngKey = first.lngKey;
+  if (!latKey || !keys.includes(latKey)) latKey = keys.find(k => /lat/i.test(k)) || '';
+  if (!lngKey || !keys.includes(lngKey)) lngKey = keys.find(k => /lng|lon/i.test(k)) || '';
+
+  const mergedData = [];
+  selectedFiles.forEach(f => {
+    (f.data || []).forEach(r => {
+      const row = {};
+      keys.forEach(k => { row[k] = r[k] != null ? r[k] : ''; });
+      mergedData.push(row);
+    });
+  });
+
+  const id = 'f' + fileIdCounter++;
+  FILES.forEach(f => f.active = false);
+  FILES.push({
+    id,
+    name: `merged_${selectedFiles.length}_datasets.xlsx`,
+    type: 'xlsx',
+    size: `${mergedData.length} rows`,
+    rows: mergedData.length,
+    cols: keys.length,
+    active: true,
+    data: mergedData,
+    latKey,
+    lngKey,
+    coordFormat: 'DD'
+  });
+
+  currentFileId = id;
+  sortKey = null;
+  sortDir = 'asc';
+  document.getElementById('mergeDialog').style.display = 'none';
+  renderSidebar();
+  renderTable();
+  renderMap();
+  updateCounts();
+}
+
+let removeTargetId = null;
+
+function showRemoveDialog(id) {
+  const file = FILES.find(f => f.id === id);
+  if (!file) return;
+  removeTargetId = id;
+  document.getElementById('removeMessage').textContent = `Are you sure you want to remove "${file.name}"? This action cannot be undone.`;
+  document.getElementById('removeDialog').style.display = '';
+}
+
+function cancelRemove() {
+  removeTargetId = null;
+  document.getElementById('removeDialog').style.display = 'none';
+}
+
+function confirmRemove() {
+  if (!removeTargetId) return;
+  const idx = FILES.findIndex(f => f.id === removeTargetId);
+  if (idx === -1) return;
+  FILES.splice(idx, 1);
+  if (currentFileId === removeTargetId) {
+    if (FILES.length > 0) {
+      const nextIdx = Math.min(idx, FILES.length - 1);
+      currentFileId = FILES[nextIdx].id;
+      FILES[nextIdx].active = true;
+    } else {
+      currentFileId = null;
+    }
+  }
+  removeTargetId = null;
+  document.getElementById('removeDialog').style.display = 'none';
+  renderSidebar();
+  renderTable();
+  renderMap();
+  updateCounts();
+}
+
+let renameTargetId = null;
+
+function showRenameDialog(id) {
+  const file = FILES.find(f => f.id === id);
+  if (!file) return;
+  renameTargetId = id;
+  document.getElementById('renameInput').value = file.name;
+  document.getElementById('renameDialog').style.display = '';
+  document.getElementById('renameInput').focus();
+  document.getElementById('renameInput').select();
+}
+
+function cancelRename() {
+  renameTargetId = null;
+  document.getElementById('renameDialog').style.display = 'none';
+}
+
+function confirmRename() {
+  if (!renameTargetId) return;
+  const file = FILES.find(f => f.id === renameTargetId);
+  if (!file) return;
+  const newName = document.getElementById('renameInput').value.trim();
+  if (!newName) {
+    document.getElementById('renameInput').focus();
+    return;
+  }
+  file.name = newName;
+  renameTargetId = null;
+  document.getElementById('renameDialog').style.display = 'none';
+  renderSidebar();
+  renderTable();
 }
 
 function detectCoordFormat(values) {
