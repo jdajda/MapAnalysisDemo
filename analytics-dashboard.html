@@ -10,9 +10,9 @@
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
-  --sidebar-w: 280px;
-  --panel-w: 380px;
   --header-h: 48px;
+  --sidebar-w: 280px;
+  --panel-w: 340px;
   --bg: #0f1117;
   --surface: #1a1d27;
   --surface2: #232733;
@@ -22,7 +22,14 @@
   --accent: #4f8cff;
   --accent2: #6c5ce7;
   --green: #00b894;
-  --orange: #fdcb6e;
+}
+body.light {
+  --bg: #f0f2f5;
+  --surface: #ffffff;
+  --surface2: #e8eaef;
+  --border: #d1d5db;
+  --text: #1a1d27;
+  --text2: #6b7280;
 }
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -55,6 +62,24 @@ body {
 }
 .header-right { margin-left: auto; display: flex; gap: 12px; align-items: center; }
 .header-right span { font-size: 12px; color: var(--text2); }
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  gap: 4px;
+  user-select: none;
+}
+.theme-toggle input { display: none; }
+.theme-slider {
+  font-size: 18px;
+  line-height: 1;
+  transition: transform 0.2s, filter 0.2s;
+  filter: grayscale(0.3);
+}
+.theme-toggle input:checked + .theme-slider {
+  filter: none;
+  transform: rotate(180deg);
+}
 
 /* Body */
 .body { display: flex; flex: 1; overflow: hidden; }
@@ -145,6 +170,102 @@ body {
 }
 .file-item:hover .file-rename { opacity: 1; }
 .file-rename:hover { color: var(--accent); }
+.file-vis-toggle, .file-icon-btn {
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.file-vis-toggle:hover { color: var(--accent); }
+.file-vis-toggle.hidden { opacity: 0.35; position: relative; }
+.file-vis-toggle.hidden::after {
+  content: '';
+  position: absolute;
+  left: 1px; right: 1px; top: 50%;
+  height: 2px;
+  background: #e74c3c;
+  transform: rotate(-18deg);
+  border-radius: 1px;
+}
+.file-label-btn {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--text2);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 1px 3px;
+  line-height: 1;
+  border-radius: 3px;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.file-item:hover .file-label-btn { opacity: 1; }
+.file-label-btn.active {
+  opacity: 1;
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.file-icon-btn:hover { color: #fdcb6e; }
+.file-icon-btn { font-size: 12px; }
+
+/* Sidebar tabs */
+.sidebar-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 10px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: color 0.15s, background 0.15s;
+  border-bottom: 2px solid transparent;
+}
+.sidebar-tab:hover { color: var(--text); background: var(--surface2); }
+.sidebar-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* Built-in set items */
+.poi-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-bottom: 4px;
+}
+.poi-item:hover { background: var(--surface2); }
+.poi-item.disabled { opacity: 0.5; cursor: default; }
+.poi-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  background: #2d3436;
+  color: #dfe6e9;
+}
+.poi-info { flex: 1; min-width: 0; }
+.poi-name { font-size: 13px; font-weight: 500; }
+.poi-meta { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.poi-status { font-size: 11px; color: var(--accent); }
 
 /* Center */
 .center { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
@@ -360,6 +481,8 @@ tr.selected td { background: rgba(79,140,255,0.08); }
 }
 .panel-close:hover { color: var(--text); }
 .panel-body { flex: 1; overflow-y: auto; padding: 20px; }
+.detail-toolbar { margin-bottom: 12px; display: flex; gap: 6px; }
+.detail-toolbar .tool-btn { font-size: 11px; padding: 4px 10px; }
 .detail-row {
   display: flex;
   justify-content: space-between;
@@ -369,6 +492,17 @@ tr.selected td { background: rgba(79,140,255,0.08); }
 }
 .detail-row .label { color: var(--text2); }
 .detail-row .value { font-weight: 500; text-align: right; }
+.leaflet-tooltip {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 6px !important;
+  padding: 4px 10px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+}
+.leaflet-tooltip-top::before { border-top-color: var(--border) !important; }
 
 /* Empty state */
 .empty-state {
@@ -395,6 +529,14 @@ tr.selected td { background: rgba(79,140,255,0.08); }
 .leaflet-popup-content { margin: 10px 14px; font-size: 13px; }
 
 /* Measure tool */
+.marker-icon { background: transparent !important; border: none !important; }
+.marker-emoji {
+  font-size: 24px;
+  line-height: 1;
+  text-align: center;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5));
+  cursor: pointer;
+}
 .toolbar-sep {
   width: 1px;
   height: 20px;
@@ -509,6 +651,25 @@ tr.selected td { background: rgba(79,140,255,0.08); }
   border-top: 1px solid var(--border);
   flex-shrink: 0;
 }
+.icon-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  padding: 4px;
+}
+.icon-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  transition: all 0.15s;
+}
+.icon-option:hover { background: var(--surface2); border-color: var(--accent); transform: scale(1.1); }
 .import-config {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -613,6 +774,10 @@ tr.selected td { background: rgba(79,140,255,0.08); }
     <h1>&#9670; Analytics</h1>
     <span class="header-badge">MOCKUP</span>
     <div class="header-right">
+      <label class="theme-toggle" title="Toggle theme">
+        <input type="checkbox" id="themeSwitch" onchange="toggleTheme()">
+        <span class="theme-slider">&#127769;</span>
+      </label>
       <span id="recordCount">0 records</span>
       <span style="width:1px;height:16px;background:var(--border)"></span>
       <span>v1.0</span>
@@ -628,7 +793,12 @@ tr.selected td { background: rgba(79,140,255,0.08); }
         <button onclick="showMergeDialog()" style="margin-left:4px">Merge</button>
         <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFileImport(event)">
       </div>
+      <div class="sidebar-tabs">
+        <button class="sidebar-tab active" data-tab="my" onclick="switchSidebarTab('my')">My Sets</button>
+        <button class="sidebar-tab" data-tab="builtin" onclick="switchSidebarTab('builtin')">Built-in</button>
+      </div>
       <div class="file-list" id="fileList"></div>
+      <div class="file-list" id="builtinList" style="display:none"></div>
     </div>
 
     <!-- Center -->
@@ -743,6 +913,22 @@ tr.selected td { background: rgba(79,140,255,0.08); }
   </div>
 </div>
 
+<div class="modal-overlay" id="iconPickerDialog" style="display:none">
+  <div class="modal" style="width:420px">
+    <div class="modal-header">
+      <h3>Choose Marker Icon</h3>
+      <button class="modal-close" onclick="cancelIconPicker()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="icon-picker-grid" id="iconPickerGrid"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="tool-btn" onclick="cancelIconPicker()">Cancel</button>
+      <button class="tool-btn" onclick="selectIcon(null)">Clear icon</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="importDialog" style="display:none">
   <div class="modal">
     <div class="modal-header">
@@ -793,6 +979,9 @@ let FILES = [
     rows: 47,
     cols: 8,
     active: true,
+    visible: true,
+    icon: null,
+    showLabels: false,
     latKey: 'latitude',
     lngKey: 'longitude',
     coordFormat: 'DD',
@@ -806,6 +995,9 @@ let FILES = [
     rows: 23,
     cols: 6,
     active: false,
+    visible: true,
+    icon: null,
+    showLabels: false,
     latKey: 'latitude',
     lngKey: 'longitude',
     coordFormat: 'DD',
@@ -819,6 +1011,9 @@ let FILES = [
     rows: 156,
     cols: 12,
     active: false,
+    visible: true,
+    icon: null,
+    showLabels: false,
     latKey: 'latitude',
     lngKey: 'longitude',
     coordFormat: 'DD',
@@ -910,12 +1105,227 @@ let mapInstance = null;
 let measuring = false;
 let measurePoints = [];
 let pendingImport = null;
+let sidebarTab = 'my';
+
+function generateEmbassiesData() {
+  const cities = [
+    { name: 'Paris', country: 'France', lat: 48.8566, lng: 2.3522 },
+    { name: 'Berlin', country: 'Germany', lat: 52.5200, lng: 13.4050 },
+    { name: 'Rome', country: 'Italy', lat: 41.9028, lng: 12.4964 },
+    { name: 'Madrid', country: 'Spain', lat: 40.4168, lng: -3.7038 },
+    { name: 'Vienna', country: 'Austria', lat: 48.2082, lng: 16.3738 },
+    { name: 'Warsaw', country: 'Poland', lat: 52.2297, lng: 21.0122 },
+    { name: 'Brussels', country: 'Belgium', lat: 50.8503, lng: 4.3517 },
+    { name: 'Stockholm', country: 'Sweden', lat: 59.3293, lng: 18.0686 },
+    { name: 'Lisbon', country: 'Portugal', lat: 38.7223, lng: -9.1393 },
+    { name: 'Prague', country: 'Czech Republic', lat: 50.0755, lng: 14.4378 },
+    { name: 'Athens', country: 'Greece', lat: 37.9838, lng: 23.7275 },
+    { name: 'Budapest', country: 'Hungary', lat: 47.4979, lng: 19.0402 },
+    { name: 'Dublin', country: 'Ireland', lat: 53.3498, lng: -6.2603 },
+    { name: 'Oslo', country: 'Norway', lat: 59.9139, lng: 10.7522 },
+    { name: 'Helsinki', country: 'Finland', lat: 60.1699, lng: 24.9384 },
+    { name: 'Copenhagen', country: 'Denmark', lat: 55.6761, lng: 12.5683 },
+    { name: 'Amsterdam', country: 'Netherlands', lat: 52.3676, lng: 4.9041 },
+    { name: 'Bern', country: 'Switzerland', lat: 46.9480, lng: 7.4474 },
+  ];
+  const embassies = [];
+  const countries = ['USA', 'China', 'UK', 'Germany', 'France', 'Japan', 'Canada', 'Australia', 'Brazil', 'India',
+    'South Korea', 'Russia', 'Mexico', 'South Africa', 'Turkey', 'Saudi Arabia', 'Norway', 'Switzerland', 'Argentina', 'Nigeria',
+    'Egypt', 'Kenya', 'Colombia', 'Thailand', 'Vietnam', 'Indonesia', 'Pakistan', 'Bangladesh', 'Philippines', 'Chile'];
+  cities.forEach((city, ci) => {
+    const count = 2 + Math.floor(Math.random() * 5);
+    for (let i = 0; i < count; i++) {
+      const ciName = countries[(ci * 5 + i) % countries.length];
+      embassies.push({
+        name: `Embassy of ${ciName}`,
+        latitude: +(city.lat + (Math.random() - 0.5) * 0.04).toFixed(4),
+        longitude: +(city.lng + (Math.random() - 0.5) * 0.04).toFixed(4),
+        type: 'embassy',
+        address: `${Math.floor(Math.random() * 200 + 1)} ${['Rue', 'Street', 'Strasse', 'Via', 'Calle', 'Gasse', 'Vägen'][Math.floor(Math.random() * 7)]}, ${city.name}, ${city.country}`
+      });
+    }
+  });
+  return embassies;
+}
+
+function generateBanksData() {
+  const cities = [
+    { name: 'London', lat: 51.5074, lng: -0.1278, country: 'UK' },
+    { name: 'Frankfurt', lat: 50.1109, lng: 8.6821, country: 'Germany' },
+    { name: 'Zurich', lat: 47.3769, lng: 8.5417, country: 'Switzerland' },
+    { name: 'Paris', lat: 48.8566, lng: 2.3522, country: 'France' },
+    { name: 'Milan', lat: 45.4642, lng: 9.1900, country: 'Italy' },
+    { name: 'Amsterdam', lat: 52.3676, lng: 4.9041, country: 'Netherlands' },
+    { name: 'Madrid', lat: 40.4168, lng: -3.7038, country: 'Spain' },
+    { name: 'Dublin', lat: 53.3498, lng: -6.2603, country: 'Ireland' },
+    { name: 'Stockholm', lat: 59.3293, lng: 18.0686, country: 'Sweden' },
+    { name: 'Luxembourg', lat: 49.6117, lng: 6.1300, country: 'Luxembourg' },
+  ];
+  const banks = [];
+  const bankNames = ['Deutsche Bank', 'BNP Paribas', 'Santander', 'UniCredit', 'ING Group',
+    'HSBC', 'Credit Suisse', 'UBS', 'Barclays', 'Société Générale',
+    'Commerzbank', 'Intesa Sanpaolo', 'ABN AMRO', 'SEB', 'Danske Bank',
+    'Nordea', 'KB Kookmin', 'Banco Bilbao', 'NatWest', 'Lloyds Bank'];
+  cities.forEach(city => {
+    const count = 3 + Math.floor(Math.random() * 5);
+    const used = new Set();
+    for (let i = 0; i < count; i++) {
+      const bName = bankNames[(cities.indexOf(city) * 5 + i) % bankNames.length];
+      if (used.has(bName)) continue;
+      used.add(bName);
+      banks.push({
+        name: `${bName} - ${city.name} Branch`,
+        latitude: +(city.lat + (Math.random() - 0.5) * 0.03).toFixed(4),
+        longitude: +(city.lng + (Math.random() - 0.5) * 0.03).toFixed(4),
+        type: 'bank',
+        address: `${Math.floor(Math.random() * 150 + 1)} ${['Main Street', 'High Street', 'Bahnhofstrasse', 'Boulevard', 'Piazza', 'Plaza', 'Avenue'][Math.floor(Math.random() * 7)]}, ${city.name}, ${city.country}`
+      });
+    }
+  });
+  return banks;
+}
+
+function generateGovernmentData() {
+  const cities = [
+    { name: 'Berlin', lat: 52.5200, lng: 13.4050, country: 'Germany' },
+    { name: 'London', lat: 51.5074, lng: -0.1278, country: 'UK' },
+    { name: 'Paris', lat: 48.8566, lng: 2.3522, country: 'France' },
+    { name: 'Rome', lat: 41.9028, lng: 12.4964, country: 'Italy' },
+    { name: 'Madrid', lat: 40.4168, lng: -3.7038, country: 'Spain' },
+    { name: 'Vienna', lat: 48.2082, lng: 16.3738, country: 'Austria' },
+    { name: 'Brussels', lat: 50.8503, lng: 4.3517, country: 'Belgium' },
+    { name: 'The Hague', lat: 52.0705, lng: 4.3007, country: 'Netherlands' },
+    { name: 'Stockholm', lat: 59.3293, lng: 18.0686, country: 'Sweden' },
+    { name: 'Warsaw', lat: 52.2297, lng: 21.0122, country: 'Poland' },
+    { name: 'Oslo', lat: 59.9139, lng: 10.7522, country: 'Norway' },
+    { name: 'Copenhagen', lat: 55.6761, lng: 12.5683, country: 'Denmark' },
+  ];
+  const gov = [];
+  const buildings = ['Parliament Building', 'City Hall', 'Ministry of Finance', 'Ministry of Foreign Affairs',
+    'Supreme Court', 'Federal Chancellery', 'Government Palace', 'National Assembly', 'Central Bank', 'Presidential Palace'];
+  cities.forEach(city => {
+    const count = 3 + Math.floor(Math.random() * 4);
+    const used = new Set();
+    for (let i = 0; i < count; i++) {
+      const bName = buildings[(cities.indexOf(city) * 4 + i) % buildings.length];
+      if (used.has(bName)) continue;
+      used.add(bName);
+      gov.push({
+        name: `${city.name} ${bName}`,
+        latitude: +(city.lat + (Math.random() - 0.5) * 0.025).toFixed(4),
+        longitude: +(city.lng + (Math.random() - 0.5) * 0.025).toFixed(4),
+        type: 'government',
+        address: `${Math.floor(Math.random() * 100 + 1)} ${['Platz', 'Square', 'Place', 'Piazza', 'Plaza', 'Torg', 'Plan'][Math.floor(Math.random() * 7)]}, ${city.name}, ${city.country}`
+      });
+    }
+  });
+  return gov;
+}
+
+function generatePolandEmbassiesData() {
+  const warsaw = { name: 'Warsaw', country: 'Poland', lat: 52.2297, lng: 21.0122 };
+  const countries = ['USA', 'UK', 'Germany', 'France', 'Italy', 'Spain', 'Japan', 'China', 'Russia', 'Canada',
+    'Australia', 'Brazil', 'India', 'South Korea', 'Sweden', 'Norway', 'Finland', 'Denmark', 'Netherlands', 'Belgium',
+    'Switzerland', 'Austria', 'Czech Republic', 'Hungary', 'Ukraine', 'Romania', 'Bulgaria', 'Greece', 'Turkey', 'Israel',
+    'Egypt', 'South Africa', 'Nigeria', 'Argentina', 'Mexico', 'Chile', 'Portugal', 'Ireland', 'Croatia', 'Serbia',
+    'Lithuania', 'Latvia', 'Estonia', 'Slovakia', 'Slovenia', 'Luxembourg', 'Vatican City', 'Algeria', 'Angola', 'Saudi Arabia',
+    'Kuwait', 'Qatar', 'UAE', 'Iran', 'Iraq', 'Vietnam', 'Indonesia', 'Malaysia', 'Thailand', 'Philippines',
+    'Pakistan', 'Bangladesh', 'Kazakhstan', 'Uzbekistan', 'Morocco', 'Tunisia', 'Cuba', 'Peru', 'Colombia', 'Venezuela'];
+  const streets = ['Ujazdowskie Avenue', 'Belwederska', 'Wilcza', 'Staroscinska', 'Klobucka', 'Szwolezerow', 'Dabrowiecka',
+    'Królowej Aldony', 'Rejtana', 'Aleje Jerozolimskie', 'Marszalkowska', 'Nowowiejska', 'Rakowiecka', 'Polna', 'Koszykowa',
+    'Krolikarnia', 'Lasek', 'Saska', 'Gornoslaska', 'Hugona Kollataja'];
+  return countries.map((c, i) => {
+    const angle = (i / countries.length) * Math.PI * 2;
+    const dist = 0.01 + Math.random() * 0.03;
+    return {
+      name: `Embassy of ${c}`,
+      latitude: +(warsaw.lat + Math.cos(angle) * dist).toFixed(4),
+      longitude: +(warsaw.lng + Math.sin(angle) * dist).toFixed(4),
+      type: 'embassy',
+      address: `${Math.floor(Math.random() * 100 + 1)} ${streets[i % streets.length]}, ${warsaw.name}, ${warsaw.country}`
+    };
+  });
+}
+
+const BUILTIN_SETS = [
+  {
+    id: 'poi_embassies',
+    name: 'Embassies in Europe',
+    icon: '\u{1F3E3}',
+    status: ''
+  },
+  {
+    id: 'poi_banks',
+    name: 'Banks in Europe',
+    icon: '\u{1F3E6}',
+    status: ''
+  },
+  {
+    id: 'poi_government',
+    name: 'Government Locations',
+    icon: '\u{1F3DB}',
+    status: ''
+  },
+  {
+    id: 'poi_pl_embassies',
+    name: 'Embassies in Poland',
+    icon: '\u{1F1F5}\u{1F1F1}',
+    status: ''
+  }
+];
+
+function switchSidebarTab(tab) {
+  sidebarTab = tab;
+  document.querySelectorAll('.sidebar-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.getElementById('fileList').style.display = tab === 'my' ? '' : 'none';
+  document.getElementById('builtinList').style.display = tab === 'builtin' ? '' : 'none';
+}
+
+function renderBuiltinSets() {
+  const el = document.getElementById('builtinList');
+  el.innerHTML = BUILTIN_SETS.map(s => `
+    <div class="poi-item ${s.status === 'loading' ? 'disabled' : ''}" onclick="${s.status === 'loading' ? '' : `loadBuiltinSet('${s.id}')`}">
+      <div class="poi-icon">${s.icon}</div>
+      <div class="poi-info">
+        <div class="poi-name">${s.name}</div>
+        <div class="poi-meta">${s.status || 'Click to load'}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function loadBuiltinSet(id) {
+  const set = BUILTIN_SETS.find(s => s.id === id);
+  if (!set || set.status === 'loading') return;
+  set.status = 'loading';
+  renderBuiltinSets();
+  const genMap = { poi_embassies: generateEmbassiesData, poi_banks: generateBanksData, poi_government: generateGovernmentData, poi_pl_embassies: generatePolandEmbassiesData };
+  const data = genMap[set.id] ? genMap[set.id]() : [];
+  const fileId = 'f' + fileIdCounter++;
+  FILES.forEach(f => f.active = false);
+  const nameMap = { poi_embassies: 'Embassies in Europe', poi_banks: 'Banks in Europe', poi_government: 'Government Locations', poi_pl_embassies: 'Embassies in Poland' };
+  const iconMap = { poi_embassies: '\u{1F3DB}', poi_banks: '\u{1F3E6}', poi_government: '\u{1F3DB}', poi_pl_embassies: '\u{1F1F5}\u{1F1F1}' };
+  FILES.push({
+    id: fileId, name: nameMap[set.id] || set.name, type: 'csv', size: `${data.length} points`, rows: data.length, cols: 5,
+    active: true, visible: true, icon: iconMap[set.id] || null, showLabels: false,
+    latKey: 'latitude', lngKey: 'longitude', coordFormat: 'DD', data
+  });
+  currentFileId = fileId;
+  sortKey = null; sortDir = 'asc';
+  set.status = `${data.length} points loaded`;
+  switchSidebarTab('my');
+  renderBuiltinSets();
+  renderSidebar();
+  renderTable();
+  renderMap();
+  updateCounts();
+}
 
 function renderSidebar() {
   const el = document.getElementById('fileList');
   el.innerHTML = FILES.map(f => `
     <div class="file-item ${f.active ? 'active' : ''}" onclick="selectFile('${f.id}')">
-      <div class="file-icon ${f.type}">${f.type === 'xlsx' ? '&#9670;' : '&#8595;'}</div>
+      <div class="file-icon ${f.type}">${f.icon || (f.type === 'xlsx' ? '&#9670;' : '&#8595;')}</div>
       <div class="file-info">
         <div class="file-name">
           <span>${f.name}</span>
@@ -923,7 +1333,9 @@ function renderSidebar() {
         </div>
         <div class="file-meta">${f.size} &middot; ${f.rows} rows</div>
       </div>
-      <span class="file-check">${f.active ? '&#10003;' : ''}</span>
+      <button class="file-label-btn ${f.showLabels ? 'active' : ''}" onclick="event.stopPropagation();toggleDatasetLabels('${f.id}')" title="${f.showLabels ? 'Hide labels' : 'Show labels'}">Ab</button>
+      <button class="file-vis-toggle ${f.visible ? '' : 'hidden'}" onclick="event.stopPropagation();toggleVisibility('${f.id}')" title="${f.visible ? 'Hide on map' : 'Show on map'}">&#128065;</button>
+      <button class="file-icon-btn" onclick="event.stopPropagation();showIconPicker('${f.id}')" title="Change marker icon">&#127912;</button>
       <button class="file-remove" onclick="event.stopPropagation();showRemoveDialog('${f.id}')" title="Remove dataset">&times;</button>
     </div>
   `).join('');
@@ -938,6 +1350,59 @@ function selectFile(id) {
   renderTable();
   renderMap();
   updateCounts();
+}
+
+function toggleVisibility(id) {
+  const file = FILES.find(f => f.id === id);
+  if (!file) return;
+  file.visible = !file.visible;
+  renderSidebar();
+  renderMap();
+}
+
+function toggleDatasetLabels(id) {
+  const file = FILES.find(f => f.id === id);
+  if (!file) return;
+  file.showLabels = !file.showLabels;
+  // Clear per-point overrides when dataset-level toggles
+  if (file.showLabels) {
+    file.data.forEach(r => delete r._showLabel);
+  }
+  renderSidebar();
+  renderMap();
+}
+
+function getLabelText(row) {
+  const nameKey = Object.keys(row).find(k => /^(name|city|store|respondent|title)$/i.test(k));
+  if (nameKey && row[nameKey]) return String(row[nameKey]);
+  if (row.id != null) return '#' + row.id;
+  const firstVal = Object.values(row).find(v => v != null && v !== '');
+  return firstVal != null ? String(firstVal) : '';
+}
+
+const ICON_PICKER_OPTIONS = ['📍', '🔴', '🔵', '🟢', '🟡', '🟠', '🟣', '\u{1F3DB}', '\u{1F3E6}', '\u{1F3E3}', '🏨', '🏪', '🏠', '⛽', '🎯', '⭐', '💎', '📌', '⚕', '🏥'];
+let iconPickerTargetId = null;
+
+function showIconPicker(id) {
+  iconPickerTargetId = id;
+  const grid = document.getElementById('iconPickerGrid');
+  grid.innerHTML = ICON_PICKER_OPTIONS.map(ic => `<div class="icon-option" onclick="selectIcon('${ic}')">${ic}</div>`).join('');
+  document.getElementById('iconPickerDialog').style.display = '';
+}
+
+function selectIcon(ic) {
+  if (!iconPickerTargetId) return;
+  const file = FILES.find(f => f.id === iconPickerTargetId);
+  if (file) file.icon = ic;
+  iconPickerTargetId = null;
+  document.getElementById('iconPickerDialog').style.display = 'none';
+  renderSidebar();
+  renderMap();
+}
+
+function cancelIconPicker() {
+  iconPickerTargetId = null;
+  document.getElementById('iconPickerDialog').style.display = 'none';
 }
 
 function getCurrentFile() {
@@ -1097,112 +1562,120 @@ function setMapMode(mode) {
   renderMap();
 }
 
-function renderMap() {
-  const file = getCurrentFile();
-  if (!file) return;
-  const data = sortData(getFilteredData());
-  const allData = file.data;
-  const { latKey, lngKey } = getLatLngColumns(file);
-  const needParse = file.coordFormat && file.coordFormat !== 'DD';
+const DATASET_COLORS = ['#6c5ce7', '#00b894', '#fdcb6e', '#e17055', '#74b9ff', '#fd79a8', '#a29bfe', '#55efc4', '#ffeaa7', '#fab1a0'];
 
-  const raw = data.map(r => {
-    let lat = r[latKey], lng = r[lngKey];
-    if (lat == null || lng == null) return null;
-    if (needParse) { lat = parseCoord(lat, file.coordFormat); lng = parseCoord(lng, file.coordFormat); }
-    lat = Number(lat); lng = Number(lng);
-    return (!isNaN(lat) && !isNaN(lng)) ? [lat, lng] : null;
-  });
-  const coords = raw.filter(Boolean);
-  const hasCoords = coords.length > 0;
+function getTileUrl() {
+  return document.body.classList.contains('light')
+    ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+    : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+}
+
+let tileLayer = null;
+
+function renderMap() {
+  const activeFile = getCurrentFile();
+  const visibleFiles = FILES.filter(f => f.visible);
 
   if (!mapInstance) {
     mapInstance = L.map('map', { zoomControl: false }).setView([39.8283, -98.5795], 4);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    tileLayer = L.tileLayer(getTileUrl(), {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
     }).addTo(mapInstance);
     L.control.zoom({ position: 'bottomright' }).addTo(mapInstance);
+  } else if (tileLayer) {
+    tileLayer.setUrl(getTileUrl());
   }
 
-  // Clear existing layers
   mapInstance.eachLayer(l => {
     if (l instanceof L.LayerGroup || l instanceof L.Polyline) {
       mapInstance.removeLayer(l);
     }
   });
 
-  if (!hasCoords) {
-    document.querySelector('#paneMap .empty-state')?.remove();
-    renderMeasurements();
-    return;
-  }
+  let allCoords = [];
+  let datasetIndex = 0;
 
-  const displayKeys = Object.keys(data[0]).filter(k => k !== latKey && k !== lngKey);
+  visibleFiles.forEach(file => {
+    const color = DATASET_COLORS[datasetIndex % DATASET_COLORS.length];
+    const isActive = file.id === (activeFile && activeFile.id);
+    const { latKey, lngKey } = getLatLngColumns(file);
+    const needParse = file.coordFormat && file.coordFormat !== 'DD';
+    const data = isActive ? sortData(getFilteredData()) : file.data;
 
-  // Draw track polyline
-  if (mapMode === 'track' || mapMode === 'both') {
-    const track = L.polyline(coords, {
-      color: '#4f8cff',
-      weight: 3,
-      opacity: 0.8,
-      smoothFactor: 1
-    }).addTo(mapInstance);
+    const raw = data.map(r => {
+      let lat = r[latKey], lng = r[lngKey];
+      if (lat == null || lng == null) return null;
+      if (needParse) { lat = parseCoord(lat, file.coordFormat); lng = parseCoord(lng, file.coordFormat); }
+      lat = Number(lat); lng = Number(lng);
+      return (!isNaN(lat) && !isNaN(lng)) ? { lat, lng, row: r } : null;
+    }).filter(Boolean);
 
-    // Start marker
-    if (coords.length > 0) {
-      L.circleMarker(coords[0], {
-        radius: 8,
-        fillColor: '#00b894',
-        color: '#fff',
-        weight: 2,
-        fillOpacity: 1
-      }).addTo(mapInstance).bindPopup('<b>Start</b>');
+    if (raw.length === 0) return;
+    const coords = raw.map(p => [p.lat, p.lng]);
+    allCoords = allCoords.concat(coords);
+
+    const displayKeys = Object.keys(data[0] || {}).filter(k => k !== latKey && k !== lngKey);
+
+    // Track mode only for active file
+    if (isActive && (mapMode === 'track' || mapMode === 'both')) {
+      const track = L.polyline(coords, {
+        color: color, weight: 3, opacity: 0.8, smoothFactor: 1
+      }).addTo(mapInstance);
+      if (coords.length > 0) {
+        L.circleMarker(coords[0], { radius: 8, fillColor: '#00b894', color: '#fff', weight: 2, fillOpacity: 1 })
+          .addTo(mapInstance).bindPopup('<b>Start</b>');
+      }
+      if (coords.length > 1) {
+        L.circleMarker(coords[coords.length - 1], { radius: 8, fillColor: '#e17055', color: '#fff', weight: 2, fillOpacity: 1 })
+          .addTo(mapInstance).bindPopup('<b>End</b>');
+      }
     }
-    // End marker
-    if (coords.length > 1) {
-      L.circleMarker(coords[coords.length - 1], {
-        radius: 8,
-        fillColor: '#e17055',
-        color: '#fff',
-        weight: 2,
-        fillOpacity: 1
-      }).addTo(mapInstance).bindPopup('<b>End</b>');
-    }
-  }
 
-  // Draw points
-  if (mapMode === 'points' || mapMode === 'both') {
-    const pointLayer = L.layerGroup().addTo(mapInstance);
-    data.forEach((row, idx) => {
-      const pt = coords[idx];
-      if (!pt) return;
-      const color = idx === 0 ? '#00b894' : '#6c5ce7';
-      const marker = L.circleMarker(pt, {
-        radius: 7,
-        fillColor: color,
-        color: '#fff',
-        weight: 1.5,
-        opacity: 0.9,
-        fillOpacity: 0.7
-      }).addTo(pointLayer);
+    // Points mode (or both for non-active, points for all)
+    if (mapMode === 'points' || mapMode === 'both' || !isActive) {
+      const pointLayer = L.layerGroup().addTo(mapInstance);
 
-      const popupLines = displayKeys.map(k => `<b>${k}:</b> ${row[k]}`).join('<br>');
-      marker.bindPopup(`<div style="min-width:160px">${popupLines}</div>`);
-
-      marker.on('click', () => {
-        openDetails(row);
-        document.querySelectorAll('#tableBody tr').forEach((tr, i) => tr.classList.toggle('selected', i === idx));
+      raw.forEach((pt, idx) => {
+        const showLabel = file.showLabels || pt.row._showLabel;
+        if (file.icon) {
+          const marker = L.marker([pt.lat, pt.lng], {
+            icon: L.divIcon({
+              className: 'marker-icon',
+              html: `<div class="marker-emoji">${file.icon}</div>`,
+              iconSize: [32, 32],
+              iconAnchor: [16, 16]
+            })
+          }).addTo(pointLayer);
+          const popupLines = displayKeys.map(k => `<b>${k}:</b> ${pt.row[k]}`).join('<br>');
+          marker.bindPopup(`<div style="min-width:160px">${popupLines}</div>`);
+          if (showLabel) { const lt = getLabelText(pt.row); if (lt) marker.bindTooltip(lt, { permanent: true, direction: 'top', offset: [0, -18] }); }
+          marker.on('click', () => { openDetails(pt.row); });
+        } else {
+          const marker = L.circleMarker([pt.lat, pt.lng], {
+            radius: 7, fillColor: color, color: '#fff', weight: 1.5, opacity: 0.9, fillOpacity: 0.7
+          }).addTo(pointLayer);
+          const popupLines = displayKeys.map(k => `<b>${k}:</b> ${pt.row[k]}`).join('<br>');
+          marker.bindPopup(`<div style="min-width:160px">${popupLines}</div>`);
+          if (showLabel) { const lt = getLabelText(pt.row); if (lt) marker.bindTooltip(lt, { permanent: true, direction: 'top', offset: [0, -14] }); }
+          marker.on('click', () => { openDetails(pt.row); });
+        }
       });
-    });
-  }
+    }
 
-  if (coords.length > 0) {
-    mapInstance.fitBounds(L.latLngBounds(coords), { padding: [30, 30] });
+    datasetIndex++;
+  });
+
+  if (allCoords.length > 0) {
+    mapInstance.fitBounds(L.latLngBounds(allCoords), { padding: [30, 30] });
   }
 
   renderMeasurements();
 }
 
+let currentDetailRow = null;
+
 function openDetails(row) {
+  currentDetailRow = row;
   const panel = document.getElementById('detailsPanel');
   const title = document.getElementById('detailTitle');
   const body = document.getElementById('detailBody');
@@ -1210,21 +1683,33 @@ function openDetails(row) {
   const file = getCurrentFile();
   const keys = Object.keys(row);
 
-  // Find a good title field
   const nameKey = keys.find(k => /^(name|city|store|respondent)$/i.test(k));
   title.textContent = nameKey ? row[nameKey] : `Record #${row.id || ''}`;
 
-  body.innerHTML = keys.map(k => `
-    <div class="detail-row">
-      <span class="label">${k}</span>
-      <span class="value">${row[k]}</span>
+  const labelActive = row._showLabel;
+  body.innerHTML = `
+    <div class="detail-toolbar">
+      <button class="tool-btn ${labelActive ? 'active' : ''}" onclick="togglePointLabel()" title="Toggle label on map">&#128483; Label</button>
     </div>
-  `).join('');
+    ${keys.map(k => `
+      <div class="detail-row">
+        <span class="label">${k}</span>
+        <span class="value">${row[k]}</span>
+      </div>
+    `).join('')}`;
 
   panel.classList.add('open');
 }
 
+function togglePointLabel() {
+  if (!currentDetailRow) return;
+  currentDetailRow._showLabel = !currentDetailRow._showLabel;
+  openDetails(currentDetailRow);
+  renderMap();
+}
+
 function closeDetails() {
+  currentDetailRow = null;
   document.getElementById('detailsPanel').classList.remove('open');
 }
 
@@ -1337,7 +1822,13 @@ function updateCounts() {
   const n = file ? file.data.length : 0;
   document.getElementById('tableCount').textContent = n;
   document.getElementById('mapCount').textContent = n;
-  document.getElementById('recordCount').textContent = `${n} records`;
+  const total = FILES.reduce((sum, f) => sum + (f.data ? f.data.length : 0), 0);
+  document.getElementById('recordCount').textContent = `${total} records`;
+}
+
+function toggleTheme() {
+  document.body.classList.toggle('light');
+  if (tileLayer) tileLayer.setUrl(getTileUrl());
 }
 
 function importFile() {
@@ -1446,7 +1937,10 @@ function confirmImport() {
   FILES.push({
     id, name, type, size,
     rows: cleanRows.length, cols: keys.length,
-    active: true, data: cleanRows,
+        active: true,
+    visible: true,
+    icon: null,
+    showLabels: false, showLabels: false, data: cleanRows,
     latKey, lngKey, coordFormat: format
   });
 
@@ -1520,6 +2014,8 @@ function confirmMerge() {
     rows: mergedData.length,
     cols: keys.length,
     active: true,
+    visible: true,
+    icon: null,
     data: mergedData,
     latKey,
     lngKey,
@@ -1659,6 +2155,7 @@ function parseCoord(value, format) {
 }
 
 // Init
+renderBuiltinSets();
 renderSidebar();
 renderTable();
 renderMap();
