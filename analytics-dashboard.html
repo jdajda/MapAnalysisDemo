@@ -1341,6 +1341,8 @@ function renderSidebar() {
   `).join('');
 }
 
+let datasetMarkers = {};
+
 function selectFile(id) {
   FILES.forEach(f => f.active = f.id === id);
   currentFileId = id;
@@ -1348,8 +1350,34 @@ function selectFile(id) {
   sortDir = 'asc';
   renderSidebar();
   renderTable();
-  renderMap();
+  renderMap(id);
   updateCounts();
+  blinkDataset(id);
+}
+
+function blinkDataset(id) {
+  const markers = datasetMarkers[id] || [];
+  if (markers.length === 0) return;
+  markers.forEach(m => {
+    if (m._path) {
+      m._path.style.transition = 'fill 1s ease, fill-opacity 1s ease';
+      m.setStyle({ fillColor: '#e74c3c', fillOpacity: 0.9 });
+    } else if (m._icon) {
+      m._icon.style.transition = 'filter 1s ease, opacity 1s ease';
+      m._icon.style.filter = 'sepia(1) saturate(8) hue-rotate(-20deg)';
+    }
+  });
+  setTimeout(() => {
+    markers.forEach(m => {
+      if (m._path) {
+        m.setStyle({ fillColor: m._originalColor || '#6c5ce7', fillOpacity: 0.7 });
+        setTimeout(() => { if (m._path) m._path.style.transition = ''; }, 1000);
+      } else if (m._icon) {
+        m._icon.style.filter = '';
+        setTimeout(() => { if (m._icon) m._icon.style.transition = ''; }, 1000);
+      }
+    });
+  }, 1000);
 }
 
 function toggleVisibility(id) {
@@ -1572,7 +1600,7 @@ function getTileUrl() {
 
 let tileLayer = null;
 
-function renderMap() {
+function renderMap(focusFileId) {
   const activeFile = getCurrentFile();
   const visibleFiles = FILES.filter(f => f.visible);
 
@@ -1593,11 +1621,13 @@ function renderMap() {
   });
 
   let allCoords = [];
+  let focusCoords = [];
   let datasetIndex = 0;
 
   visibleFiles.forEach(file => {
     const color = DATASET_COLORS[datasetIndex % DATASET_COLORS.length];
     const isActive = file.id === (activeFile && activeFile.id);
+    const isFocus = focusFileId && file.id === focusFileId;
     const { latKey, lngKey } = getLatLngColumns(file);
     const needParse = file.coordFormat && file.coordFormat !== 'DD';
     const data = isActive ? sortData(getFilteredData()) : file.data;
@@ -1613,6 +1643,7 @@ function renderMap() {
     if (raw.length === 0) return;
     const coords = raw.map(p => [p.lat, p.lng]);
     allCoords = allCoords.concat(coords);
+    if (isFocus) focusCoords = focusCoords.concat(coords);
 
     const displayKeys = Object.keys(data[0] || {}).filter(k => k !== latKey && k !== lngKey);
 
@@ -1634,6 +1665,7 @@ function renderMap() {
     // Points mode (or both for non-active, points for all)
     if (mapMode === 'points' || mapMode === 'both' || !isActive) {
       const pointLayer = L.layerGroup().addTo(mapInstance);
+      datasetMarkers[file.id] = [];
 
       raw.forEach((pt, idx) => {
         const showLabel = file.showLabels || pt.row._showLabel;
@@ -1650,14 +1682,17 @@ function renderMap() {
           marker.bindPopup(`<div style="min-width:160px">${popupLines}</div>`);
           if (showLabel) { const lt = getLabelText(pt.row); if (lt) marker.bindTooltip(lt, { permanent: true, direction: 'top', offset: [0, -18] }); }
           marker.on('click', () => { openDetails(pt.row); });
+          datasetMarkers[file.id].push(marker);
         } else {
           const marker = L.circleMarker([pt.lat, pt.lng], {
             radius: 7, fillColor: color, color: '#fff', weight: 1.5, opacity: 0.9, fillOpacity: 0.7
           }).addTo(pointLayer);
+          marker._originalColor = color;
           const popupLines = displayKeys.map(k => `<b>${k}:</b> ${pt.row[k]}`).join('<br>');
           marker.bindPopup(`<div style="min-width:160px">${popupLines}</div>`);
           if (showLabel) { const lt = getLabelText(pt.row); if (lt) marker.bindTooltip(lt, { permanent: true, direction: 'top', offset: [0, -14] }); }
           marker.on('click', () => { openDetails(pt.row); });
+          datasetMarkers[file.id].push(marker);
         }
       });
     }
@@ -1665,8 +1700,9 @@ function renderMap() {
     datasetIndex++;
   });
 
-  if (allCoords.length > 0) {
-    mapInstance.fitBounds(L.latLngBounds(allCoords), { padding: [30, 30] });
+  const bounds = focusCoords.length > 0 ? focusCoords : allCoords;
+  if (bounds.length > 0) {
+    mapInstance.fitBounds(L.latLngBounds(bounds), { padding: [30, 30] });
   }
 
   renderMeasurements();
